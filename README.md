@@ -1,5 +1,7 @@
  COMPANY - Micro Information Technology
+
  NAME - Madiha Akheel
+
  DOMAIN - Web Development
 
  The Skin Lab — Skincare E-Commerce Website
