@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Skin Lab — Skincare E‑commerce (Vanilla JS)</title>
+  <meta name="description" content="The Skin Lab: interactive skincare shop with a skin quiz, product matches, and a smooth cart — no frameworks." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-start:#0ea5e9; /* sky-500 */
+      --bg-end:#7c3aed;   /* violet-600 */
+      --card:#0b1220aa;   /* glass */
+      --card-strong:#0b1220e0;
+      --text:#eef2ff;     /* slate-50 */
+      --muted:#c7d2fecc;  /* indigo-200 */
+      --accent:#f59e0b;   /* amber-500 */
+      --ok:#22c55e;       /* green-500 */
+      --danger:#ef4444;   /* red-500 */
+      --ring:#93c5fd;     /* blue-300 */
+      --shadow: 0 10px 30px rgba(0,0,0,.25);
+      --radius: 18px;
+      --radius-lg: 24px;
+      --max: 1200px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(120deg, var(--bg-start), var(--bg-end));
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+    /* Subtle animated blobs background */
+    .bg-blobs::before, .bg-blobs::after {
+      content: ""; position: fixed; inset: -20vmax; z-index: -1; filter: blur(80px); opacity: .35; animation: drift 30s linear infinite;
+      background: radial-gradient(closest-side, rgba(255,255,255,.18), transparent 70%),
+                  radial-gradient(closest-side, rgba(255,255,255,.12), transparent 70%),
+                  radial-gradient(closest-side, rgba(255,255,255,.10), transparent 70%);
+      background-size: 45vmax 45vmax, 36vmax 36vmax, 30vmax 30vmax;
+      background-position: 10% 20%, 80% 10%, 50% 80%;
+    }
+    .bg-blobs::after { animation-duration: 38s; animation-direction: reverse; opacity: .25; }
+    @keyframes drift { from { transform: translateX(0) translateY(0) rotate(0deg);} to { transform: translateX(2%) translateY(-3%) rotate(360deg);} }
+
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: var(--max); margin-inline: auto; padding: 22px; }
+
+    header {
+      position: sticky; top: 0; z-index: 50; backdrop-filter: saturate(1.2) blur(12px);
+      background: linear-gradient(180deg, rgba(6,10,20,.65), rgba(6,10,20,.35));
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .logo { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:.3px; }
+    .logo-badge { width:40px; height:40px; border-radius: 12px; display:grid; place-items:center; font-weight:800; background: linear-gradient(135deg, #22d3ee, #a78bfa); color:#0b1220; box-shadow: var(--shadow); }
+    .nav-links { display:flex; gap:16px; opacity:.9; }
+    .nav a { padding:10px 14px; border-radius: 10px; transition: .2s transform, .2s background; }
+    .nav a:hover { background: rgba(255,255,255,.08); transform: translateY(-1px); }
+
+    .cta { background: linear-gradient(135deg, #fde047, #fb923c); color:#0b1220; font-weight:800; padding:10px 14px; border-radius: 12px; box-shadow: var(--shadow); border: none; cursor:pointer; }
+    .icon-btn { background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); padding:10px 12px; border-radius: 12px; cursor:pointer; color:var(--text); display:inline-flex; align-items:center; gap:8px; }
+
+    /* Hero */
+    .hero { padding: 40px 22px 10px; }
+    .hero-card { border-radius: var(--radius-lg); padding: 36px; background: linear-gradient(180deg, rgba(6,10,20,.65), rgba(6,10,20,.35)); border: 1px solid rgba(255,255,255,.12); box-shadow: var(--shadow); position: relative; overflow:hidden; }
+    .hero h1 { margin:0 0 8px; font-size: clamp(28px, 6vw, 44px); line-height: 1.05; }
+    .sub { color: var(--muted); margin: 0 0 20px; }
+    .hero-actions { display:flex; gap:12px; flex-wrap:wrap; }
+
+    /* Grid */
+    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap: 18px; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-12 { grid-column: span 12; }
+    @media (max-width: 900px){ .col-6, .col-4 { grid-column: span 12; } }
+
+    /* Section titles */
+    .section-title { margin: 24px 0 12px; font-size: 22px; font-weight: 800; letter-spacing:.2px; }
+
+    /* Cards */
+    .card { background: linear-gradient(180deg, rgba(6,10,20,.65), rgba(6,10,20,.35)); border: 1px solid rgba(255,255,255,.12); border-radius: var(--radius); box-shadow: var(--shadow); overflow:hidden; transition: .25s transform, .25s box-shadow, .25s border-color; }
+    .card:hover { transform: translateY(-4px); box-shadow: 0 18px 50px rgba(0,0,0,.35); border-color: rgba(255,255,255,.2); }
+    .card .content { padding: 16px; }
+    .badge { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius: 999px; font-size: 12px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16); }
+
+    /* Product */
+    .product-img { width:100%; aspect-ratio: 1/1; object-fit: cover; background: rgba(255,255,255,.06); display:block; }
+    .prod-title { font-weight:700; margin: 8px 0 0; }
+    .price { font-weight:800; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .row.wrap { flex-wrap:wrap; }
+
+    .btn { display:inline-flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color:var(--text); cursor:pointer; transition:.2s transform, .2s background; }
+    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.12); }
+    .btn.primary { background: linear-gradient(135deg, #34d399, #22d3ee); color:#0b1220; font-weight:800; border:none; }
+    .btn.danger { background: rgba(239,68,68,.85); border: none; }
+
+    /* Quiz modal */
+    .modal { position: fixed; inset: 0; display: none; place-items: center; padding: 24px; z-index: 100; }
+    .modal.show { display:grid; }
+    .backdrop { position: absolute; inset: 0; backdrop-filter: blur(14px) saturate(1.2); background: rgba(6,10,20,.45); }
+    .modal-card { position: relative; width: min(980px, 95vw); border-radius: var(--radius-lg); padding: 22px; background: linear-gradient(180deg, rgba(6,10,20,.85), rgba(6,10,20,.65)); border:1px solid rgba(255,255,255,.14); box-shadow: var(--shadow); }
+    .step-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; }
+    .progress { height: 10px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; border:1px solid rgba(255,255,255,.12); }
+    .progress > span { display:block; height:100%; width:0; background: linear-gradient(90deg, #22d3ee, #a78bfa); transition: width .35s ease; }
+
+    .choices { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin: 16px 0 6px; }
+    .choice { padding:14px; border-radius: 16px; text-align:center; border:1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); cursor:pointer; transition:.2s transform, .2s border-color, .2s background; user-select:none; }
+    .choice .emoji { font-size:28px; }
+    .choice:hover { transform: translateY(-2px); background: rgba(255,255,255,.10); }
+    .choice.selected { border-color: var(--ring); box-shadow: 0 0 0 3px rgba(147,197,253,.3) inset; }
+
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); }
+
+    /* Drawer (Cart) */
+    .drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(440px, 95vw); background: linear-gradient(180deg, rgba(6,10,20,.95), rgba(6,10,20,.85)); border-left:1px solid rgba(255,255,255,.14); transform: translateX(100%); transition: transform .35s ease; z-index: 80; display:flex; flex-direction:column; }
+    .drawer.show { transform: translateX(0); }
+    .drawer header { position: sticky; top:0; background: transparent; border:none; }
+    .drawer .body { padding: 18px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
+
+    .cart-item { display:grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items:center; padding: 10px; border-radius: 14px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
+    .qty { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius: 10px; background: rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); }
+
+    .footer { text-align:center; padding: 30px 0; opacity:.9; font-size: 14px; }
+
+    /* Utility */
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body class="bg-blobs">
+  <header>
+    <div class="container nav">
+      <div class="logo">
+        <div class="logo-badge">TSL</div>
+        <div>
+          <div style="font-size: 18px; line-height:1;">THE SKIN LAB</div>
+          <div class="muted" style="margin-top:2px;">Your routine, simplified ✨</div>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#home">Home</a>
+        <a href="#shop" id="navShop">Shop</a>
+        <a href="#quiz" id="navQuiz">Skin Quiz</a>
+        <button class="icon-btn" id="openCart" aria-label="Open cart">🛒 <span id="cartCount" class="badge">0</span></button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero container" id="home">
+      <div class="hero-card">
+        <div class="grid">
+          <div class="col-6">
+            <h1>Find your perfect skincare in 3 clicks.</h1>
+            <p class="sub">We start by understanding <strong>your skin type</strong> and <strong>concerns</strong>, then curate products that actually fit you. No fluff — just results.</p>
+            <div class="hero-actions">
+              <button class="cta" id="startQuiz">Take the Skin Quiz</button>
+              <a class="btn" href="#shop">Browse All Products</a>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="card" style="height:100%; display:grid; place-items:center;">
+              <div style="text-align:center; padding:14px;">
+                <div class="badge">⚗️ Dermatologist-inspired curation</div>
+                <h3 style="margin:10px 0 6px;">Personalised routines</h3>
+                <p class="muted">Powered by rules that match actives to your skin profile.
+                </p>
+                <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                  <span class="pill">💧 Hydration</span>
+                  <span class="pill">🧴 Barrier</span>
+                  <span class="pill">🌙 Retinol</span>
+                  <span class="pill">☀️ SPF</span>
+                  <span class="pill">✨ Brightening</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="container" id="recommendations">
+      <h2 class="section-title">Your matches</h2>
+      <p class="muted" id="recNote">Take the quiz to see curated picks for you.</p>
+      <div class="grid" id="recGrid"></div>
+    </section>
+
+    <section class="container" id="shop">
+      <h2 class="section-title">Shop all</h2>
+      <div class="row wrap" style="margin-bottom:10px;">
+        <div style="flex:1; min-width: 220px;">
+          <input id="search" placeholder="Search products…" style="width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color:var(--text); outline:none;" />
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <select id="filterType" class="btn" style="padding:10px 12px;">
+            <option value="">All skin types</option>
+            <option>oily</option>
+            <option>dry</option>
+            <option>combination</option>
+            <option>normal</option>
+            <option>sensitive</option>
+          </select>
+          <select id="filterConcern" class="btn" style="padding:10px 12px;">
+            <option value="">All concerns</option>
+            <option>acne</option>
+            <option>pigmentation</option>
+            <option>dryness</option>
+            <option>wrinkles</option>
+            <option>redness</option>
+            <option>pores</option>
+            <option>dullness</option>
+          </select>
+          <button id="resetFilters" class="btn">Reset</button>
+        </div>
+      </div>
+      <div class="grid" id="shopGrid"></div>
+    </section>
+  </main>
+
+  <div class="drawer" id="cartDrawer" aria-live="polite" aria-label="Cart drawer">
+    <header>
+      <div class="container nav">
+        <div class="logo" style="gap:8px;">
+          <div class="logo-badge" style="width:34px; height:34px; font-size:12px;">TSL</div>
+          <strong>Cart</strong>
+        </div>
+        <div class="nav-links">
+          <button class="icon-btn" id="closeCart">✖ Close</button>
+        </div>
+      </div>
+    </header>
+    <div class="body">
+      <div id="cartItems"></div>
+      <div class="card" style="padding:14px;">
+        <div class="row">
+          <div>
+            <div class="muted">Subtotal</div>
+            <div class="price" id="cartSubtotal">₹0</div>
+          </div>
+          <button class="btn primary" id="checkoutBtn">Checkout</button>
+        </div>
+      </div>
+      <p class="muted" style="text-align:center;">No payment gateway wired — this is a demo checkout.</p>
+    </div>
+  </div>
+
+  <!-- Quiz Modal -->
+  <div class="modal" id="quizModal" role="dialog" aria-modal="true" aria-labelledby="quizTitle">
+    <div class="backdrop"></div>
+    <div class="modal-card">
+      <div class="step-header">
+        <h3 id="quizTitle" class="section-title" style="margin:8px 0;">Your Skin Profile</h3>
+        <button class="icon-btn" id="closeQuiz">Skip ✖</button>
+      </div>
+      <div class="progress"><span id="progressBar"></span></div>
+
+      <div id="step1">
+        <p class="muted">Step 1 of 2 — Select your skin type</p>
+        <div class="choices" id="typeChoices"></div>
+        <div class="row" style="margin-top:14px;">
+          <span class="muted">Tip: choose the option that best describes your skin for most days.</span>
+          <button class="btn primary" id="toStep2" disabled>Next ▷</button>
+        </div>
+      </div>
+
+      <div id="step2" class="hidden">
+        <p class="muted">Step 2 of 2 — Pick your top concerns (1–3)</p>
+        <div class="choices" id="concernChoices"></div>
+        <div class="row" style="margin-top:14px;">
+          <button class="btn" id="backTo1">◁ Back</button>
+          <span class="muted">We’ll match actives like niacinamide, AHA/BHA, ceramides, and more.</span>
+          <button class="btn primary" id="seeMatches" disabled>See Matches ✨</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer container">
+    © <span id="year"></span> The Skin Lab. Crafted for your internship project.
+    <div style="margin-top:8px;">
+      <button class="btn" id="retakeQuiz">Retake Skin Quiz</button>
+    </div>
+  </footer>
+
+  <script>
+  /* =====================
+     Data and Utilities
+     ===================== */
+  const TYPES = [
+    { id:'oily', label:'Oily', emoji:'✨', hint:'Shine & larger pores' },
+    { id:'dry', label:'Dry', emoji:'💧', hint:'Tight & flaky sometimes' },
+    { id:'combination', label:'Combination', emoji:'🌗', hint:'T‑zone oily, cheeks dry' },
+    { id:'normal', label:'Normal', emoji:'🙂', hint:'Balanced most days' },
+    { id:'sensitive', label:'Sensitive', emoji:'🌸', hint:'Easily irritated' },
+  ];
+
+  const CONCERNS = [
+    { id:'acne', label:'Acne & Breakouts', emoji:'🧼' },
+    { id:'pigmentation', label:'Pigmentation', emoji:'🌞' },
+    { id:'dryness', label:'Dryness', emoji:'💦' },
+    { id:'wrinkles', label:'Fine Lines', emoji:'🪞' },
+    { id:'redness', label:'Redness', emoji:'🍓' },
+    { id:'pores', label:'Visible Pores', emoji:'🔍' },
+    { id:'dullness', label:'Dullness', emoji:'✨' },
+  ];
+
+  const PRODUCTS = [
+    {
+      id:'p1', name:'Cloud Cleanser — Amino Gel', price:699, rating:4.7,
+      image:'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?q=80&w=1200&auto=format&fit=crop',
+      category:'cleanser',
+      types:['oily','combination','normal'], concerns:['acne','pores','dullness'],
+      ingredients:['Amino acids','Niacinamide','Green tea'],
+      desc:'Light gel that lifts oil without stripping your barrier.'
+    },
+    {
+      id:'p2', name:'Velvet Milk — Ceramide Cleanser', price:749, rating:4.6,
+      image:'https://www.aspiracreation.com/wp-content/uploads/L-Velvet-Cleansing-Milk-2.jpg',
+      category:'cleanser',
+      types:['dry','sensitive','normal'], concerns:['dryness','redness'],
+      ingredients:['Ceramides','Glycerin','Oat'],
+      desc:'Ultra‑gentle milk that soothes while it cleans.'
+    },
+    {
+      id:'p3', name:'Clear Shot — 2% BHA Toner', price:599, rating:4.5,
+      image:'https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?q=80&w=1200&auto=format&fit=crop',
+      category:'toner',
+      types:['oily','combination'], concerns:['acne','pores','dullness'],
+      ingredients:['Salicylic acid','Willow bark'],
+      desc:'Unclogs pores and smooths texture with BHA.'
+    },
+    {
+      id:'p4', name:'Glow Drop — 10% Niacinamide', price:699, rating:4.8,
+      image:'https://kosmetista.in/wp-content/uploads/2021/09/Niacinamide-1.jpg',
+      category:'serum',
+      types:['oily','combination','normal','sensitive'], concerns:['pores','redness','dullness','acne'],
+      ingredients:['Niacinamide','Zinc PCA'],
+      desc:'Refines pores, balances oil, calms redness.'
+    },
+    {
+      id:'p5', name:'Hydra Boost — 2% HA Serum', price:799, rating:4.6,
+      image:'https://plumgoodness.com/cdn/shop/files/01_fe1d1fd6-0449-44fe-ae6c-ca1c5ab7cbc0.jpg?v=1755761127&width=1214',
+      category:'serum',
+      types:['dry','normal','sensitive','combination'], concerns:['dryness','dullness'],
+      ingredients:['Hyaluronic acid','Panthenol'],
+      desc:'Deep hydration for a plump, dewy look.'
+    },
+    {
+      id:'p6', name:'Bright Fix — 10% Vitamin C', price:999, rating:4.4,
+      image:'https://www.brillare.co.in/cdn/shop/files/Brillare-Vitamin-C-Face-Serum-1_8a821e19-ad12-43d8-b168-1a3a6a3cf3c3.jpg?v=1748350908',
+      category:'serum',
+      types:['normal','dry','combination','oily'], concerns:['pigmentation','dullness'],
+      ingredients:['Ethyl Ascorbic Acid','Ferulic'],
+      desc:'Targets spots and boosts glow.'
+    },
+    {
+      id:'p7', name:'Barrier Balm — Ceramide Cream', price:899, rating:4.9,
+      image:'https://www.skinbae.in/cdn/shop/files/3_fa35c4c1-f1fc-461a-ac12-94a2536124e1.jpg?v=1755838559&width=1080',
+      category:'moisturizer',
+      types:['dry','sensitive','normal'], concerns:['dryness','redness'],
+      ingredients:['Ceramides','Squalane'],
+      desc:'Rich but non‑greasy moisture to repair barrier.'
+    },
+    {
+      id:'p8', name:'Gel Light — Water Cream', price:799, rating:4.5,
+      image:'https://m.media-amazon.com/images/I/61o2UBezF-L._UF1000,1000_QL80_.jpg',
+      category:'moisturizer',
+      types:['oily','combination','normal'], concerns:['pores','dullness','acne'],
+      ingredients:['Niacinamide','Allantoin'],
+      desc:'Oil‑free hydration with a soft‑matte finish.'
+    },
+    {
+      id:'p9', name:'Night Rewrite — 0.3% Retinol', price:1099, rating:4.3,
+      image:'https://m.media-amazon.com/images/I/71PcEPXHN4L.jpg',
+      category:'treatment',
+      types:['normal','oily','combination'], concerns:['wrinkles','acne','pores'],
+      ingredients:['Retinol','Squalane'],
+      desc:'Smoother texture & fine lines over time.'
+    },
+    {
+      id:'p10', name:'Calm Veil — 0.5% BHA + 0.5% PHA', price:849, rating:4.2,
+      image:'https://eu.koreanskincare.com/cdn/shop/files/8809647390091_AHA-BHA-PHA-30-DAYS-MIRACLE-ACNE-CLEAR-FOAM-_100ml__web_thumbnail_sub_04_785x.jpg?v=1721626679',
+      category:'toner',
+      types:['sensitive','normal','combination'], concerns:['redness','pores','dullness'],
+      ingredients:['Gluconolactone','Salicylic (low)'],
+      desc:'Gentle refine for easily irritated skin.'
+    },
+    {
+      id:'p11', name:'NOVOLOGY — SPF50 PA++++', price:899, rating:4.8,
+      image:'https://assets.myntassets.com/w_412,q_30,dpr_3,fl_progressive,f_webp/assets/images/33100575/2025/6/18/507c04e7-db96-40cf-9d30-620230a724491750246059534-Novology-SPF50-PA-Ultra-Light-Gel-Sunscreen---50-g-964175024-1.jpg',
+      category:'sunscreen',
+      types:['all'], concerns:['pigmentation','wrinkles','redness','dullness'],
+      ingredients:['UVA/UVB filters','Vitamin E'],
+      desc:'Weightless sunscreen for everyday use.'
+    },
+    {
+      id:'p12', name:'Spot Fade — 2% Alpha Arbutin', price:849, rating:4.4,
+      image:'https://smytten-image.gumlet.io/shop_item/DAT0045BB51.jpg',
+      category:'serum',
+      types:['normal','dry','combination','oily','sensitive'], concerns:['pigmentation','dullness'],
+      ingredients:['Alpha arbutin','Licorice'],
+      desc:'Targets dark spots & uneven tone.'
+    }
+  ];
+
+  const rupee = n => `₹${n.toLocaleString('en-IN')}`;
+  const qs = s => document.querySelector(s);
+  const qsa = s => [...document.querySelectorAll(s)];
+
+  /* =====================
+     App State
+     ===================== */
+  const state = {
+    type: null,
+    concerns: new Set(),
+    cart: {}, // id -> qty
+  };
+
+  const saveState = () => localStorage.setItem('tsl_state', JSON.stringify({ type: state.type, concerns: [...state.concerns], cart: state.cart }));
+  const loadState = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem('tsl_state'));
+      if (!s) return;
+      state.type = s.type || null;
+      state.concerns = new Set(s.concerns || []);
+      state.cart = s.cart || {};
+    } catch {}
+  };
+
+  /* =====================
+     UI Renderers
+     ===================== */
+  function renderChoices() {
+    // Step 1 — type
+    const typeWrap = qs('#typeChoices'); typeWrap.innerHTML = '';
+    TYPES.forEach(t => {
+      const el = document.createElement('div');
+      el.className = 'choice';
+      el.dataset.id = t.id;
+      el.innerHTML = `<div class="emoji">${t.emoji}</div><div style="font-weight:700; margin-top:6px;">${t.label}</div><div class="muted" style="font-size:12px;">${t.hint}</div>`;
+      if (state.type === t.id) el.classList.add('selected');
+      el.onclick = () => {
+        state.type = t.id;
+        qsa('#typeChoices .choice').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        qs('#toStep2').disabled = false;
+      };
+      typeWrap.appendChild(el);
+    });
+
+    // Step 2 — concerns
+    const cWrap = qs('#concernChoices'); cWrap.innerHTML = '';
+    CONCERNS.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'choice';
+      el.dataset.id = c.id;
+      if (state.concerns.has(c.id)) el.classList.add('selected');
+      el.innerHTML = `<div class="emoji">${c.emoji}</div><div style="font-weight:700; margin-top:6px;">${c.label}</div>`;
+      el.onclick = () => {
+        if (state.concerns.has(c.id)) state.concerns.delete(c.id); else if (state.concerns.size < 3) state.concerns.add(c.id);
+        el.classList.toggle('selected');
+        qs('#seeMatches').disabled = state.concerns.size === 0;
+      };
+      cWrap.appendChild(el);
+    });
+  }
+
+  function scoreProduct(p, type, concerns) {
+    // Type match ("all" matches every type)
+    const typeMatch = p.types.includes('all') || p.types.includes(type);
+    const concernOverlap = p.concerns.filter(c => concerns.has(c));
+    const score = (typeMatch ? 2 : 0) + concernOverlap.length; // prioritize type
+    return { score, typeMatch, overlap: concernOverlap };
+  }
+
+  function renderRecommendations() {
+    const note = qs('#recNote');
+    const grid = qs('#recGrid');
+    grid.innerHTML = '';
+    if (!state.type || state.concerns.size === 0) {
+      note.textContent = 'Take the quiz to see curated picks for you.';
+      return;
+    }
+
+    const ranked = PRODUCTS.map(p => ({ p, ...scoreProduct(p, state.type, state.concerns) }))
+                           .filter(x => x.score > 0)
+                           .sort((a,b) => b.score - a.score || b.p.rating - a.p.rating)
+                           .slice(0, 8);
+
+    if (ranked.length === 0) {
+      note.textContent = 'We didn\'t find perfect matches. Try a different concern mix.';
+      return;
+    }
+
+    note.innerHTML = `Best for <span class="badge">${state.type}</span> · Concerns: ${[...state.concerns].map(c => `<span class="badge">${c}</span>`).join(' ')}`;
+
+    ranked.forEach(({p, overlap}) => grid.appendChild(productCard(p, overlap)));
+  }
+
+  function productCard(p, overlap=[]) {
+    const card = document.createElement('div');
+    card.className = 'card col-4';
+    card.innerHTML = `
+      <img class="product-img" src="${p.image}" alt="${p.name}">
+      <div class="content">
+        <div class="row">
+          <div>
+            <div class="prod-title">${p.name}</div>
+            <div class="muted">${p.category} • ⭐ ${p.rating}</div>
+          </div>
+          <div class="price">${rupee(p.price)}</div>
+        </div>
+        <p class="muted" style="margin:8px 0 10px;">${p.desc}</p>
+        <div class="row wrap">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${overlap.map(x=>`<span class="badge">match: ${x}</span>`).join('')}
+          </div>
+          <button class="btn primary" data-id="${p.id}">Add to cart</button>
+        </div>
+      </div>`;
+
+    const btn = card.querySelector('button');
+    btn.onclick = () => addToCart(p.id);
+
+    // Fancy hover tilt
+    card.onmousemove = (e) => {
+      const r = card.getBoundingClientRect();
+      const mx = (e.clientX - r.left) / r.width; // 0..1
+      const my = (e.clientY - r.top) / r.height; // 0..1
+      const rx = (my - .5) * 6; const ry = (mx - .5) * -6;
+      card.style.transform = `perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+    };
+    card.onmouseleave = () => { card.style.transform = ''; };
+
+    return card;
+  }
+
+  function renderShop(list = PRODUCTS) {
+    const grid = qs('#shopGrid'); grid.innerHTML = '';
+    const term = qs('#search').value.trim().toLowerCase();
+    const type = qs('#filterType').value;
+    const concern = qs('#filterConcern').value;
+    const filtered = list.filter(p => {
+      const t = !type || p.types.includes(type) || p.types.includes('all');
+      const c = !concern || p.concerns.includes(concern);
+      const s = !term || p.name.toLowerCase().includes(term) || p.desc.toLowerCase().includes(term) || p.ingredients.join(' ').toLowerCase().includes(term);
+      return t && c && s;
+    });
+    if (filtered.length === 0) grid.innerHTML = `<div class="card col-12" style="padding:20px; text-align:center;">No products found. Try resetting filters.</div>`
+    filtered.forEach(p => grid.appendChild(productCard(p)));
+  }
+
+  /* =====================
+     Cart
+     ===================== */
+  function addToCart(id, qty=1) {
+    state.cart[id] = (state.cart[id] || 0) + qty;
+    saveState();
+    updateCartUI();
+    flashAdded();
+  }
+  function removeFromCart(id) {
+    delete state.cart[id]; saveState(); updateCartUI();
+  }
+  function setQty(id, qty) {
+    if (qty <= 0) { removeFromCart(id); return; }
+    state.cart[id] = qty; saveState(); updateCartUI();
+  }
+  function updateCartUI() {
+    const itemsWrap = qs('#cartItems'); itemsWrap.innerHTML = '';
+    const entries = Object.entries(state.cart);
+    qs('#cartCount').textContent = entries.reduce((a,[,q])=>a+q,0);
+    if (entries.length === 0) { itemsWrap.innerHTML = `<div class="muted">Your cart is empty.</div>`; qs('#cartSubtotal').textContent = rupee(0); return; }
+    let subtotal = 0;
+    entries.forEach(([id, qty]) => {
+      const p = PRODUCTS.find(x => x.id === id); if (!p) return;
+      subtotal += p.price * qty;
+      const row = document.createElement('div');
+      row.className = 'cart-item';
+      row.innerHTML = `
+        <img src="${p.image}" alt="${p.name}" style="width:64px; height:64px; object-fit:cover; border-radius:10px;">
+        <div>
+          <div style="font-weight:700;">${p.name}</div>
+          <div class="muted">${rupee(p.price)}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="qty">
+            <button class="icon-btn" aria-label="Decrease">−</button>
+            <span>${qty}</span>
+            <button class="icon-btn" aria-label="Increase">＋</button>
+          </div>
+          <button class="btn danger" aria-label="Remove">🗑</button>
+        </div>`;
+      const [dec, inc] = row.querySelectorAll('.icon-btn');
+      dec.onclick = () => setQty(id, qty-1);
+      inc.onclick = () => setQty(id, qty+1);
+      row.querySelector('.btn.danger').onclick = () => removeFromCart(id);
+      itemsWrap.appendChild(row);
+    });
+    qs('#cartSubtotal').textContent = rupee(subtotal);
+  }
+
+  function flashAdded(){
+    const btn = document.createElement('div');
+    btn.textContent = 'Added to cart';
+    btn.style.position='fixed'; btn.style.bottom='20px'; btn.style.left='50%'; btn.style.transform='translateX(-50%)';
+    btn.style.background='linear-gradient(135deg,#34d399,#22d3ee)'; btn.style.padding='10px 14px'; btn.style.borderRadius='999px'; btn.style.color='#0b1220'; btn.style.fontWeight='800'; btn.style.boxShadow='var(--shadow)';
+    document.body.appendChild(btn);
+    setTimeout(()=>btn.remove(), 1000);
+  }
+
+  /* =====================
+     Quiz Flow
+     ===================== */
+  function openQuiz(){
+    qs('#quizModal').classList.add('show');
+    updateProgress(0);
+  }
+  function closeQuiz(){ qs('#quizModal').classList.remove('show'); }
+  function updateProgress(step){
+    const span = qs('#progressBar');
+    span.style.width = step === 0 ? '10%' : step === 1 ? '60%' : '100%';
+  }
+
+  function goStep1(){
+    qs('#step1').classList.remove('hidden');
+    qs('#step2').classList.add('hidden');
+    updateProgress(0);
+  }
+  function goStep2(){
+    qs('#step1').classList.add('hidden');
+    qs('#step2').classList.remove('hidden');
+    updateProgress(1);
+  }
+
+  function finishQuiz(){
+    saveState();
+    renderRecommendations();
+    renderShop();
+    celebrate();
+    closeQuiz();
+  }
+
+  /* Cute confetti without libraries */
+  function celebrate(){
+    const colors = ['#22d3ee','#a78bfa','#34d399','#fde047','#fb923c'];
+    for(let i=0;i<40;i++){
+      const s = document.createElement('span');
+      s.style.position='fixed'; s.style.top='-10px'; s.style.left = Math.random()*100+'%';
+      s.style.width='8px'; s.style.height='14px'; s.style.borderRadius='2px';
+      s.style.background = colors[Math.floor(Math.random()*colors.length)];
+      s.style.transform = `rotate(${Math.random()*360}deg)`;
+      s.style.zIndex = 2000;
+      document.body.appendChild(s);
+      const duration = 1000 + Math.random()*1400;
+      s.animate([
+        { transform: s.style.transform, top:'-10px', opacity:1 },
+        { transform: `translateX(${(Math.random()*2-1)*60}px) rotate(${Math.random()*360}deg)`, top:'110vh', opacity:.8 }
+      ], { duration, easing:'cubic-bezier(.2,.7,.3,1)', fill:'forwards' });
+      setTimeout(()=>s.remove(), duration+100);
+    }
+  }
+
+  /* =====================
+     Events & Init
+     ===================== */
+  function bindEvents(){
+    qs('#startQuiz').onclick = openQuiz;
+    qs('#navQuiz').onclick = (e)=>{ e.preventDefault(); openQuiz(); };
+    qs('#closeQuiz').onclick = closeQuiz;
+
+    qs('#toStep2').onclick = () => { goStep2(); };
+    qs('#backTo1').onclick = () => { goStep1(); };
+    qs('#seeMatches').onclick = () => { finishQuiz(); };
+
+    qs('#retakeQuiz').onclick = () => { openQuiz(); goStep1(); };
+
+    qs('#openCart').onclick = () => qs('#cartDrawer').classList.add('show');
+    qs('#closeCart').onclick = () => qs('#cartDrawer').classList.remove('show');
+
+    ['input','change'].forEach(ev => {
+      qs('#search').addEventListener(ev, ()=>renderShop());
+      qs('#filterType').addEventListener(ev, ()=>renderShop());
+      qs('#filterConcern').addEventListener(ev, ()=>renderShop());
+    });
+    qs('#resetFilters').onclick = () => { qs('#search').value=''; qs('#filterType').value=''; qs('#filterConcern').value=''; renderShop(); };
+
+    // navShop quick scroll
+    qs('#navShop').onclick = (e)=>{
+      e.preventDefault();
+      document.querySelector('#shop').scrollIntoView({ behavior:'smooth' });
+    };
+
+    qs('#checkoutBtn').onclick = () => {
+      alert('Demo checkout — you can show an order summary here.');
+      state.cart = {}; saveState(); updateCartUI();
+    };
+  }
+
+  function init(){
+    loadState();
+    qs('#year').textContent = new Date().getFullYear();
+    renderChoices();
+    renderRecommendations();
+    renderShop();
+    updateCartUI();
+
+    // Only auto-open quiz on first visit (no type stored)
+    if (!state.type) openQuiz(); else updateProgress(2);
+
+    bindEvents();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
